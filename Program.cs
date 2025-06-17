@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using WebAPI_Conferences.DAT;
+using WebAPI_Conferences.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -9,6 +10,7 @@ builder.Services.AddDbContext<AppDbContext>(opt =>
 {
     opt.UseSqlServer(builder.Configuration.GetConnectionString("Default"));
 });
+builder.Services.AddScoped<IDbService, DbService>();
 builder.Services.AddControllers();
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
