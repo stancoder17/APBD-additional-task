@@ -81,4 +81,17 @@ public class AppController(IDbService service) : ControllerBase
     {
         return Ok(await service.GetFutureEventsAsync(cancellationToken));
     }
+    
+    [HttpGet("participants/{idParticipant:int}/events/past")]
+    public async Task<IActionResult> GetPastEvents([FromRoute] int idParticipant, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return Ok(await service.GetPastEventsAsync(idParticipant, cancellationToken));
+        } 
+        catch (NotFoundException e)
+        {
+            return NotFound(e.Message);
+        }
+    }
 }

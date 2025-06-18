@@ -9,4 +9,5 @@ public interface IDbService
     public Task AddParticipantToEventAsync(int idEvent, int idParticipant, CancellationToken cancellationToken);
     public Task RemoveParticipantFromEventAsync(int idEvent, int idParticipant, CancellationToken cancellationToken);
     public Task<List<GetFutureEventDto>> GetFutureEventsAsync(CancellationToken cancellationToken);
+    public Task<List<GetPastEventDto>> GetPastEventsAsync(int idParticipant, CancellationToken cancellationToken);
 }

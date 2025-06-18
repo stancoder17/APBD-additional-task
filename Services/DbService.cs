@@ -88,7 +88,6 @@ public class DbService(AppDbContext context) : IDbService
             
             addedSpeakers.Add(new GetSpeakerDto
             {
-                FirstName = speaker.FirstName,
                 LastName = speaker.LastName
             });
         }
@@ -192,10 +191,35 @@ public class DbService(AppDbContext context) : IDbService
                 AvailableSpots = e.MaxPeople - context.ParticipantEvents.Count(pe => pe.IdEvent == e.IdEvent),
                 Speakers = e.SpeakerRegistrations.Select(se => new GetSpeakerDto
                 {
-                    FirstName = se.Speaker.FirstName,
                     LastName = se.Speaker.LastName
                 }).ToList()
             })
             .ToListAsync(cancellationToken);
+    }
+
+    public async Task<List<GetPastEventDto>> GetPastEventsAsync(int idParticipant, CancellationToken cancellationToken)
+    {
+        // Check if Participant exists
+        if (!await context.Participants.AnyAsync(p => p.IdParticipant == idParticipant, cancellationToken))
+            throw new NotFoundException($"Participant with id {idParticipant} not found.");
+        
+        // Return
+        return await context.Events.
+            Where(e => e.ParticipantRegistrations.Any(pe => pe.IdEvent == e.IdEvent && pe.IdParticipant == idParticipant)
+                       && e.Date < DateTime.Now)
+            .Select(e => new GetPastEventDto
+            {
+                Event = new GetEventDto
+                {
+                    IdEvent = e.IdEvent,
+                    Title = e.Title,
+                    Description = e.Description,
+                    Date = e.Date
+                },
+                Speakers = e.SpeakerRegistrations.Select(se => new GetSpeakerDto
+                {
+                    LastName = se.Speaker.LastName
+                }).ToList()
+            }).ToListAsync(cancellationToken);
     }
 }
