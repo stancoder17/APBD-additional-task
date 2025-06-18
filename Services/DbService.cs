@@ -36,7 +36,6 @@ public class DbService(AppDbContext context) : IDbService
             Title = newEvent.Title,
             Description = newEvent.Description,
             Date = newEvent.Date,
-            MaxPeople = newEvent.MaxPeople
         };
     }
 
@@ -178,6 +177,25 @@ public class DbService(AppDbContext context) : IDbService
 
     public async Task<List<GetFutureEventDto>> GetFutureEventsAsync(CancellationToken cancellationToken)
     {
-        
+        return await context.Events
+            .Where(e => e.Date > DateTime.Now)
+            .Select(e => new GetFutureEventDto
+            {
+                Event = new GetEventDto
+                {
+                    IdEvent = e.IdEvent,
+                    Title = e.Title,
+                    Description = e.Description,
+                    Date = e.Date
+                },
+                ParticipantsCount = context.ParticipantEvents.Count(pe => pe.IdEvent == e.IdEvent),
+                AvailableSpots = e.MaxPeople - context.ParticipantEvents.Count(pe => pe.IdEvent == e.IdEvent),
+                Speakers = e.SpeakerRegistrations.Select(se => new GetSpeakerDto
+                {
+                    FirstName = se.Speaker.FirstName,
+                    LastName = se.Speaker.LastName
+                }).ToList()
+            })
+            .ToListAsync(cancellationToken);
     }
 }

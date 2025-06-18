@@ -75,4 +75,10 @@ public class AppController(IDbService service) : ControllerBase
             return BadRequest(e.Message);
         }
     }
+    
+    [HttpGet("events")]
+    public async Task<IActionResult> GetFutureEvents(CancellationToken cancellationToken)
+    {
+        return Ok(await service.GetFutureEventsAsync(cancellationToken));
+    }
 }

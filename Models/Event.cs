@@ -18,4 +18,7 @@ public class Event
     
     [Required]
     public int MaxPeople { get; set; }
+    
+    public virtual ICollection<ParticipantEvent> ParticipantRegistrations { get; set; } = null!;
+    public virtual ICollection<SpeakerEvent> SpeakerRegistrations { get; set; } = null!;
 }
