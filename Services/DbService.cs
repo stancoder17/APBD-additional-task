@@ -40,8 +40,16 @@ public class DbService(AppDbContext context) : IDbService
         };
     }
 
-    public async Task<GetEventAssignmentsDto> AddSpeakersToEventAsync(int idEvent, IEnumerable<SpeakerEventDto> speakerDtos, CancellationToken cancellationToken)
+    public async Task<GetEventWithSpeakersDto> AddSpeakersToEventAsync(int idEvent, List<SpeakerEventDto> speakerDtos, CancellationToken cancellationToken)
     {
+        // Check if Event exists
+        if (!await context.Events.AnyAsync(e => e.IdEvent == idEvent, cancellationToken))
+            throw new NotFoundException($"Event with id {idEvent} not found.");
+        
+        // Check if any Speaker was provided
+        if (speakerDtos.Count == 0)
+            throw new BadRequestException("No speakers provided.");
+        
         var eventDate = await context.Events
             .Where(e => e.IdEvent == idEvent)
             .Select(e => e.Date)
@@ -69,7 +77,7 @@ public class DbService(AppDbContext context) : IDbService
 
             // Validate speaking time
             if (speakerDto.SpeakingTime < 0)
-                throw new BadRequestException("SpeakingTime value cannot be negative.");
+                throw new BadRequestException("Speaking time value cannot be negative.");
             
             // Add Speaker
             await context.SpeakerEvents.AddAsync(new SpeakerEvent
@@ -87,10 +95,45 @@ public class DbService(AppDbContext context) : IDbService
         }
         await context.SaveChangesAsync(cancellationToken);
         
-        return new GetEventAssignmentsDto
+        return new GetEventWithSpeakersDto
         {
             IdEvent = idEvent,
             Speakers = addedSpeakers
         };
+    }
+
+    public async Task AddParticipantToEventAsync(int idEvent, int idParticipant, CancellationToken cancellationToken)
+    {
+        var eventEntity = await context.Events
+            .Select(e => new { e.IdEvent, e.MaxPeople })
+            .FirstOrDefaultAsync(e => e.IdEvent == idEvent ,cancellationToken);
+        
+        // Check if Event exists
+        if (eventEntity == null)
+            throw new NotFoundException($"Event with id {idEvent} not found.");
+
+        // Check if Participant exists
+        if (!await context.Participants.AnyAsync(p => p.IdParticipant == idParticipant, cancellationToken))
+            throw new NotFoundException($"Participant with id {idParticipant} not found.");
+        
+        // Check if Participant is already registered on this Event
+        if (await context.ParticipantEvents.AnyAsync(pe => pe.IdEvent == idEvent && pe.IdParticipant == idParticipant, cancellationToken))
+            throw new BadRequestException($"Participant with id {idParticipant} is already registered on event with id {idEvent}.");
+        
+        // Check if MaxPeople limit won't be exceeded
+        var participantsCount = await context.ParticipantEvents.CountAsync(pe => pe.IdEvent == idEvent, cancellationToken);
+        var maxPeople = eventEntity.MaxPeople;
+        if (participantsCount == maxPeople)
+            throw new BadRequestException($"Event with id {idEvent} is full.");
+        
+        // Add Participant
+        await context.ParticipantEvents.AddAsync(new ParticipantEvent
+        {
+            IdEvent = idEvent,
+            IdParticipant = idParticipant,
+            RegistrationDate = DateTime.Now
+        }, cancellationToken);
+        
+        await context.SaveChangesAsync(cancellationToken);
     }
 }

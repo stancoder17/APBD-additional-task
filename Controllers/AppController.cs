@@ -23,12 +23,30 @@ public class AppController(IDbService service) : ControllerBase
         }
     }
 
-    [HttpPost("events/{id:int}")]
-    public async Task<IActionResult> AddSpeakersToEvent([FromRoute] int id, [FromBody] IEnumerable<SpeakerEventDto> speakerDtos, CancellationToken cancellationToken)
+    [HttpPost("events/{id:int}/speakers")]
+    public async Task<IActionResult> AddSpeakersToEvent([FromRoute] int id, [FromBody] List<SpeakerEventDto> speakerDtos, CancellationToken cancellationToken)
     {
         try
         {
             return Ok(await service.AddSpeakersToEventAsync(id, speakerDtos, cancellationToken));
+        }
+        catch (NotFoundException e)
+        {
+            return NotFound(e.Message);
+        }
+        catch (BadRequestException e)
+        {
+            return BadRequest(e.Message);
+        }
+    }
+    
+    [HttpPost("events/{idEvent:int}/participants/{idParticipant:int}")]
+    public async Task<IActionResult> AddParticipantToEvent([FromRoute] int idEvent, [FromRoute] int idParticipant, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await service.AddParticipantToEventAsync(idEvent, idParticipant, cancellationToken);
+            return Ok();
         }
         catch (NotFoundException e)
         {
