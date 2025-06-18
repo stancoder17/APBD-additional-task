@@ -105,12 +105,16 @@ public class DbService(AppDbContext context) : IDbService
     public async Task AddParticipantToEventAsync(int idEvent, int idParticipant, CancellationToken cancellationToken)
     {
         var eventEntity = await context.Events
-            .Select(e => new { e.IdEvent, e.MaxPeople })
+            .Select(e => new { e.IdEvent, e.Date, e.MaxPeople })
             .FirstOrDefaultAsync(e => e.IdEvent == idEvent ,cancellationToken);
         
         // Check if Event exists
         if (eventEntity == null)
             throw new NotFoundException($"Event with id {idEvent} not found.");
+        
+        // Check if Event is in the past
+        if (eventEntity.Date < DateTime.Now)
+            throw new BadRequestException($"Event with id {idEvent} has already started/taken place.");
 
         // Check if Participant exists
         if (!await context.Participants.AnyAsync(p => p.IdParticipant == idParticipant, cancellationToken))
@@ -134,6 +138,41 @@ public class DbService(AppDbContext context) : IDbService
             RegistrationDate = DateTime.Now
         }, cancellationToken);
         
+        await context.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task RemoveParticipantFromEventAsync(int idEvent, int idParticipant, CancellationToken cancellationToken)
+    {
+        var eventEntity = await context.Events
+            .Select(e => new { e.IdEvent, e.Date })
+            .FirstOrDefaultAsync(e => e.IdEvent == idEvent ,cancellationToken);
+        
+        // Check if Event exists
+        if (eventEntity == null)
+            throw new NotFoundException($"Event with id {idEvent} not found.");
+
+        // Check if Participant exists
+        if (!await context.Participants.AnyAsync(p => p.IdParticipant == idParticipant, cancellationToken))
+            throw new NotFoundException($"Participant with id {idParticipant} not found.");
+        
+        // Check if Participant is registered on this Event
+        if (!await context.ParticipantEvents.AnyAsync(pe => pe.IdEvent == idEvent && pe.IdParticipant == idParticipant, cancellationToken))
+            throw new BadRequestException($"Participant with id {idParticipant} is not registered on event with id {idEvent}.");
+        
+        var dateDifference = DateTime.Now - eventEntity.Date;
+        
+        // Check if Event is in the past
+        if (dateDifference.TotalHours > 0)
+            throw new BadRequestException($"Event with id {idEvent} has already started/taken place.");
+
+        // Check the 24 hours thing
+        if (dateDifference.TotalHours > -24)
+            throw new BadRequestException("A participant cannot be removed from an event less than 24 hours before it starts.");
+        
+        // Delete record
+        await context.ParticipantEvents
+            .Where(pe => pe.IdEvent == idEvent && pe.IdParticipant == idParticipant)
+            .ExecuteDeleteAsync(cancellationToken);
         await context.SaveChangesAsync(cancellationToken);
     }
 }

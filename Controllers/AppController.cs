@@ -57,4 +57,22 @@ public class AppController(IDbService service) : ControllerBase
             return BadRequest(e.Message);
         }
     }
+    
+    [HttpDelete("events/{idEvent:int}/participants/{idParticipant:int}")]
+    public async Task<IActionResult> RemoveParticipantFromEvent([FromRoute] int idEvent, [FromRoute] int idParticipant, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await service.RemoveParticipantFromEventAsync(idEvent, idParticipant, cancellationToken);
+            return NoContent();
+        }
+        catch (NotFoundException e)
+        {
+            return NotFound(e.Message);
+        }
+        catch (BadRequestException e)
+        {
+            return BadRequest(e.Message);
+        }
+    }
 }
