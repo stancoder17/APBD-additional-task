@@ -175,4 +175,9 @@ public class DbService(AppDbContext context) : IDbService
             .ExecuteDeleteAsync(cancellationToken);
         await context.SaveChangesAsync(cancellationToken);
     }
+
+    public async Task<List<GetFutureEventDto>> GetFutureEventsAsync(CancellationToken cancellationToken)
+    {
+        
+    }
 }
