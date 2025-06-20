@@ -67,11 +67,14 @@ public class DbService(AppDbContext context) : IDbService
             if (speaker == null)
                 throw new NotFoundException($"Speaker with id {speakerDto.IdSpeaker} not found.");
             
+            if (await context.SpeakerEvents.AnyAsync(se => se.IdSpeaker == speakerDto.IdSpeaker && se.IdEvent == idEvent, cancellationToken))
+                throw new BadRequestException($"Speaker with id {speakerDto.IdSpeaker} is already registered on event with id {idEvent}.");
+            
             // Check if Speaker doesn't have any other Event at the same time
             if (speaker.EventRegistrations.Count != 0)
             {
-                if (speaker.EventRegistrations.Any(speakerEvent => speakerEvent.Event.Date == eventDate))
-                    throw new BadRequestException($"Speaker with id {speakerDto.IdSpeaker} already has an Event for date: {eventDate}.");
+                if (speaker.EventRegistrations.Any(speakerEvent => speakerEvent.Event.Date.Date == eventDate.Date))
+                    throw new BadRequestException($"Speaker with id {speakerDto.IdSpeaker} already has an event on date: {eventDate.Date.ToShortDateString()}.");
             }
 
             // Validate speaking time
@@ -178,24 +181,30 @@ public class DbService(AppDbContext context) : IDbService
     {
         return await context.Events
             .Where(e => e.Date > DateTime.Now)
+            .Select(e => new
+            {
+                Event = e,
+                ParticipantsCount = context.ParticipantEvents.Count(pe => pe.IdEvent == e.IdEvent)
+            })
             .Select(e => new GetFutureEventDto
             {
                 Event = new GetEventDto
                 {
-                    IdEvent = e.IdEvent,
-                    Title = e.Title,
-                    Description = e.Description,
-                    Date = e.Date
+                    IdEvent = e.Event.IdEvent,
+                    Title = e.Event.Title,
+                    Description = e.Event.Description,
+                    Date = e.Event.Date
                 },
-                ParticipantsCount = context.ParticipantEvents.Count(pe => pe.IdEvent == e.IdEvent),
-                AvailableSpots = e.MaxPeople - context.ParticipantEvents.Count(pe => pe.IdEvent == e.IdEvent),
-                Speakers = e.SpeakerRegistrations.Select(se => new GetSpeakerDto
+                ParticipantsCount = e.ParticipantsCount,
+                AvailableSpots = e.Event.MaxPeople - e.ParticipantsCount,
+                Speakers = e.Event.SpeakerRegistrations.Select(se => new GetSpeakerDto
                 {
                     LastName = se.Speaker.LastName
                 }).ToList()
             })
             .ToListAsync(cancellationToken);
     }
+
 
     public async Task<List<GetPastEventDto>> GetPastEventsAsync(int idParticipant, CancellationToken cancellationToken)
     {

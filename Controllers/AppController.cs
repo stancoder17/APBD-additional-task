@@ -76,7 +76,7 @@ public class AppController(IDbService service) : ControllerBase
         }
     }
     
-    [HttpGet("events")]
+    [HttpGet("events/future")]
     public async Task<IActionResult> GetFutureEvents(CancellationToken cancellationToken)
     {
         return Ok(await service.GetFutureEventsAsync(cancellationToken));
